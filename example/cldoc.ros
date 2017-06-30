@@ -1,0 +1,136 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#| <Put a one-line description here>
+exec ros -Q -- $0 "$@"
+|#
+(progn ;;init forms
+  (ros:ensure-asdf)
+  #+quicklisp (ql:quickload '(:cl-docset-generator
+                              :docparser
+                              :cl-ppcre
+                              :cl-mustache)
+                            :silent t))
+
+(defpackage :ros.script.clproject.3707699329
+  (:use :cl
+        :docset-generator))
+(in-package :ros.script.clproject.3707699329)
+
+(setf docparser:*store-form* t)
+
+(defun node->type (node)
+  (cond
+    ((typep node 'docparser:class-node)            "Class")
+    ((typep node 'docparser:class-slot-node)       "Variable")
+    ((typep node 'docparser:condition-node)        "Error")
+    ((typep node 'docparser:function-node)         "Function")
+    ((typep node 'docparser:generic-function-node) "Method")
+    ((typep node 'docparser:macro-node)            "Macro")
+    ((typep node 'docparser:method-node)           "Method")
+    ((typep node 'docparser:record-node)           "Record")
+    ((typep node 'docparser:struct-node)           "Struct")
+    ((typep node 'docparser:struct-slot-node)      "Variable")
+    ((typep node 'docparser:type-node)             "Type")
+    ((typep node 'docparser:variable-node)         "Variable")
+    (t (class-of node))))
+
+
+(mustache:define render-document
+  "<!DOCTYPE html>
+   <html>
+   <head>
+     <meta charset=\"UTF-8\">
+     <title>{{title}}</title>
+     <link rel=\"stylesheet\" href=\"http://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic\">
+     <link rel=\"stylesheet\" href=\"http://cdn.rawgit.com/necolas/normalize.css/master/normalize.css\">
+     <link rel=\"stylesheet\" href=\"http://cdn.rawgit.com/milligram/milligram/master/dist/milligram.min.css\">
+   </head>
+   <body>
+     <div class=\"container\">
+       <div class=\"clearfix\">
+         <div class=\"float-left\">
+           <h1>{{name}}</h1>
+         </div>
+         <div class=\"float-right\">
+           {{#package}}
+           <code>{{package}}</code><br>
+           {{/package}}
+           <code>{{type}}</code>
+         </div>
+       </div>
+
+       {{#doc}}
+       <h2>description</h2>
+       <p>{{doc}}</p>
+       {{/doc}}
+
+       {{#form}}
+       <h2>code</h2>
+       <pre><code>{{form}}</code></pre>
+       {{/form}}
+     </div>
+   </body>
+   </html>")
+
+(defun getcwd ()
+  (ppcre:regex-replace "/$" (namestring (uiop:getcwd)) ""))
+
+;(docparser:parse "corne")
+;(defvar _parsed_result_ (swank:lookup-presented-object 103))
+;(docparser:do-packages (pkg _parsed_result_)
+;  (docparser:do-nodes (node pkg)
+;    (format t "~A~%vvvvvvvvv~%" (docparser:node-name node))
+;    (format t "~A" (nth 2 (docparser:node-form node)))
+;    (format t "~%~%")
+;    ))
+
+(defun system->docset (system-name)
+  (let* ((docset (make-instance 'docset :id system-name :name system-name :family "lisp"
+                                :base-dir (getcwd)))
+         (parsed-result (docparser:parse system-name)))
+    (docparser:do-packages (pkg parsed-result)
+      (let* ((pkg-name (string-downcase (docparser:package-index-name pkg)))
+             (node-prefix (format nil "~A.~A" system-name pkg-name)))
+        (add-record
+          docset
+          (make-instance 'docset-record
+                         :name pkg-name
+                         :type "Package"
+                         :prefix system-name
+                         :body (with-output-to-string (mustache:*output-stream*)
+                                 (render-document
+                                   (list (cons :title pkg-name)
+                                         (cons :name pkg-name)
+                                         (cons :type "Package")
+                                         (cons :doc (docparser:package-index-docstring pkg))
+                                         (cons :form "-"))))))
+        (docparser:do-nodes (node pkg)
+          (let* ((node-name (string-downcase (docparser:node-name node)))
+                 (node-type (node->type node))
+                 (node-doc  (docparser:node-docstring node))
+                 ;(node-form (format nil "~A" (nth 2 (docparser:node-form node))))
+                 (node-form (format nil "~A" (docparser:node-form node)))
+                 )
+            (add-record
+              docset
+              (make-instance 'docset-record
+                             :name node-name
+                             :type node-type
+                             :prefix node-prefix
+                             :body (with-output-to-string (mustache:*output-stream*)
+                                     (render-document
+                                       (list (cons :package pkg-name)
+                                             (cons :title node-name)
+                                             (cons :name node-name)
+                                             (cons :type node-type)
+                                             (cons :doc node-doc)
+                                             (cons :form node-form))))))))))
+    (generate docset)))
+
+(defun main (&rest argv)
+  (if (not (= (length argv) 1))
+    (format t "Usage: cldoc <SYSTEM NAME>~%")
+    (progn (system->docset (first argv))
+           (format t "finish~%"))))
+
+;;; vim: set ft=lisp lisp:

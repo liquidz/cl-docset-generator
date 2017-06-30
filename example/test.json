@@ -1,0 +1,9 @@
+{
+    "id": "test",
+    "name": "test",
+    "family": "test",
+    "records": [
+        { "name": "foo", "type": "Variable", "prefix": "com.example", "body": "fooo" },
+        { "name": "bar", "type": "Variable", "prefix": "com.example", "body": "baar" }
+    ]
+}

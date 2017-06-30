@@ -1,0 +1,72 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#| <Put a one-line description here>
+exec ros -Q -- $0 "$@"
+|#
+(progn ;;init forms
+  (ros:ensure-asdf)
+  #+quicklisp (ql:quickload '(:alexandria
+                              :cl-docset-generator
+                              :cl-ppcre
+                              :cl-mustache
+                              :jsown) :silent t))
+
+(defpackage :ros.script.scrapbox
+  (:use :cl
+        :docset-generator))
+(in-package :ros.script.scrapbox)
+
+(defvar *html*
+  "<!DOCTYPE html>
+   <html>
+   <head>
+     <meta charset=\"UTF-8\">
+     <title>{{name}}</title>
+     <link rel=\"stylesheet\" href=\"http://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic\">
+     <link rel=\"stylesheet\" href=\"http://cdn.rawgit.com/necolas/normalize.css/master/normalize.css\">
+     <link rel=\"stylesheet\" href=\"http://cdn.rawgit.com/milligram/milligram/master/dist/milligram.min.css\">
+   </head>
+   <body>
+     <div class=\"container\">
+       <h1>{{name}}</h1>
+       <pre><code>{{body}}</code></pre>
+     </div>
+   </body>
+   </html>")
+
+(defun read-json (json-file)
+  (jsown:parse
+    (alexandria:read-file-into-string json-file)))
+
+(defun getcwd ()
+  (ppcre:regex-replace "/$" (namestring (uiop:getcwd)) ""))
+
+(defun join (coll &optional (sep ""))
+  (reduce (lambda (res s) (format nil "~A~A~A" res sep s)) coll))
+
+(defun json->docset (json)
+  (let ((docset (make-instance 'docset
+                               :id (jsown:val json "name")
+                               :name (jsown:val json "name")
+                               :family "scrapbox"
+                               :base-dir (getcwd))))
+    (loop for record in (jsown:val json "pages")
+          do (let ((name (jsown:val record "title"))
+                   (body (join (jsown:val record "lines") #\newline)))
+               (add-record
+                 docset
+                 (make-instance
+                   'docset-record
+                   :name name
+                   :type "Guide"
+                   :prefix "sb"
+                   :body (mustache:render* *html* (list (cons :name name)
+                                                        (cons :body body)))))))
+    (generate docset)))
+
+(defun main (&rest argv)
+  (if (not (= 1 (length argv)))
+    (format t "Usage: scrapbox <JSON FILE>~%")
+    (progn (json->docset (read-json (first argv)))
+           (format t "finish~%"))))
+;;; vim: set ft=lisp lisp:

@@ -1,0 +1,46 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#| <Put a one-line description here>
+exec ros -Q -- $0 "$@"
+|#
+(progn ;;init forms
+  (ros:ensure-asdf)
+  #+quicklisp (ql:quickload '(:alexandria
+                              :cl-docset-generator
+                              :cl-ppcre
+                              :jsown) :silent t))
+
+(defpackage :ros.script.docset.3707709776
+  (:use :cl
+        :docset-generator))
+(in-package :ros.script.docset.3707709776)
+
+(defun read-json (json-file)
+  (jsown:parse
+    (alexandria:read-file-into-string json-file)))
+
+(defun getcwd ()
+  (ppcre:regex-replace "/$" (namestring (uiop:getcwd)) ""))
+
+(defun json->docset (json)
+  (let ((docset (make-instance 'docset
+                               :id (jsown:val json "id")
+                               :name (jsown:val json "name")
+                               :family (jsown:val json "family")
+                               :base-dir (getcwd))))
+    (loop for record in (jsown:val json "records")
+          do (add-record
+               docset
+               (make-instance 'docset-record
+                              :name (jsown:val record "name")
+                              :type (jsown:val record "type")
+                              :prefix (jsown:val record "prefix")
+                              :body (jsown:val record "body"))))
+    (generate docset)))
+
+(defun main (&rest argv)
+  (if (not (= 1 (length argv)))
+    (format t "Usage: docset <JSON FILE>~%")
+    (progn (json->docset (read-json (first argv)))
+           (format t "finish~%"))))
+;;; vim: set ft=lisp lisp:
