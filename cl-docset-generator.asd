@@ -9,8 +9,8 @@
 
 (defsystem cl-docset-generator
   :version "0.1"
-  :author ""
-  :license ""
+  :author "Masashi Iizuka <liquidz.uo@gmail.com>"
+  :license "MIT"
   :depends-on (
                :cl-ppcre
                :alexandria
@@ -20,10 +20,10 @@
   :components ((:module "src"
                 :components
                 ((:file "core"))))
-  :description ""
+  :description "Docset generator for Common Lisp"
   :long-description
   #.(with-open-file (stream (merge-pathnames
-                             #p"README.markdown"
+                             #p"README.md"
                              (or *load-pathname* *compile-file-pathname*))
                             :if-does-not-exist nil
                             :direction :input)

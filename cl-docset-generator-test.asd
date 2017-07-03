@@ -8,8 +8,8 @@
 (in-package :lodo-test-asd)
 
 (defsystem lodo-test
-  :author ""
-  :license ""
+  :author "Masashi Iizuka <liquidz.uo@gmail.com>"
+  :license "MIT"
   :depends-on (:lodo
                :prove)
   :components ((:module "t"

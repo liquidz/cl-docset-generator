@@ -23,19 +23,17 @@ exec ros -Q -- $0 "$@"
   (ppcre:regex-replace "/$" (namestring (uiop:getcwd)) ""))
 
 (defun json->docset (json)
-  (let ((docset (make-instance 'docset
-                               :id (jsown:val json "id")
-                               :name (jsown:val json "name")
-                               :family (jsown:val json "family")
-                               :base-dir (getcwd))))
+  (let ((docset (make-docset :id (jsown:val json "id")
+                             :name (jsown:val json "name")
+                             :family (jsown:val json "family")
+                             :base-dir (getcwd))))
     (loop for record in (jsown:val json "records")
           do (add-record
                docset
-               (make-instance 'docset-record
-                              :name (jsown:val record "name")
-                              :type (jsown:val record "type")
-                              :prefix (jsown:val record "prefix")
-                              :body (jsown:val record "body"))))
+               (make-record :name (jsown:val record "name")
+                            :type (jsown:val record "type")
+                            :prefix (jsown:val record "prefix")
+                            :body (jsown:val record "body"))))
     (generate docset)))
 
 (defun main (&rest argv)

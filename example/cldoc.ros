@@ -75,56 +75,43 @@ exec ros -Q -- $0 "$@"
 (defun getcwd ()
   (ppcre:regex-replace "/$" (namestring (uiop:getcwd)) ""))
 
-;(docparser:parse "corne")
-;(defvar _parsed_result_ (swank:lookup-presented-object 103))
-;(docparser:do-packages (pkg _parsed_result_)
-;  (docparser:do-nodes (node pkg)
-;    (format t "~A~%vvvvvvvvv~%" (docparser:node-name node))
-;    (format t "~A" (nth 2 (docparser:node-form node)))
-;    (format t "~%~%")
-;    ))
-
 (defun system->docset (system-name)
-  (let* ((docset (make-instance 'docset :id system-name :name system-name :family "lisp"
-                                :base-dir (getcwd)))
+  (let* ((docset (make-docset :id system-name :name system-name :family "lisp"
+                              :base-dir (getcwd)))
          (parsed-result (docparser:parse system-name)))
     (docparser:do-packages (pkg parsed-result)
       (let* ((pkg-name (string-downcase (docparser:package-index-name pkg)))
              (node-prefix (format nil "~A.~A" system-name pkg-name)))
         (add-record
           docset
-          (make-instance 'docset-record
-                         :name pkg-name
-                         :type "Package"
-                         :prefix system-name
-                         :body (with-output-to-string (mustache:*output-stream*)
-                                 (render-document
-                                   (list (cons :title pkg-name)
-                                         (cons :name pkg-name)
-                                         (cons :type "Package")
-                                         (cons :doc (docparser:package-index-docstring pkg))
-                                         (cons :form "-"))))))
+          (make-record :name pkg-name
+                       :type "Package"
+                       :prefix system-name
+                       :body (with-output-to-string (mustache:*output-stream*)
+                               (render-document
+                                 (list (cons :title pkg-name)
+                                       (cons :name pkg-name)
+                                       (cons :type "Package")
+                                       (cons :doc (docparser:package-index-docstring pkg))
+                                       (cons :form "-"))))))
         (docparser:do-nodes (node pkg)
           (let* ((node-name (string-downcase (docparser:node-name node)))
                  (node-type (node->type node))
                  (node-doc  (docparser:node-docstring node))
-                 ;(node-form (format nil "~A" (nth 2 (docparser:node-form node))))
-                 (node-form (format nil "~A" (docparser:node-form node)))
-                 )
+                 (node-form (format nil "~A" (docparser:node-form node))))
             (add-record
               docset
-              (make-instance 'docset-record
-                             :name node-name
-                             :type node-type
-                             :prefix node-prefix
-                             :body (with-output-to-string (mustache:*output-stream*)
-                                     (render-document
-                                       (list (cons :package pkg-name)
-                                             (cons :title node-name)
-                                             (cons :name node-name)
-                                             (cons :type node-type)
-                                             (cons :doc node-doc)
-                                             (cons :form node-form))))))))))
+              (make-record :name node-name
+                           :type node-type
+                           :prefix node-prefix
+                           :body (with-output-to-string (mustache:*output-stream*)
+                                   (render-document
+                                     (list (cons :package pkg-name)
+                                           (cons :title node-name)
+                                           (cons :name node-name)
+                                           (cons :type node-type)
+                                           (cons :doc node-doc)
+                                           (cons :form node-form))))))))))
     (generate docset)))
 
 (defun main (&rest argv)

@@ -2,8 +2,8 @@
 (defpackage docset-generator
   (:use :cl)
   (:export
-    :docset
-    :docset-record
+    :make-docset
+    :make-record
     :add-record
     :generate))
 (in-package :docset-generator)
@@ -21,6 +21,11 @@
    (type   :initform "" :initarg :type)
    (prefix :initform "" :initarg :prefix)
    (body   :initform "" :initarg :body)))
+
+(defun make-docset (&rest args)
+  (apply #'make-instance 'docset args))
+(defun make-record (&rest args)
+  (apply #'make-instance 'docset-record args))
 
 (defun join (coll &optional (sep ""))
   (reduce (lambda (res s) (format nil "~A~A~A" res sep s)) coll))
